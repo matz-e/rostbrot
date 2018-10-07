@@ -18,14 +18,9 @@ fn main() {
     let ymax = (xmax - xmin) * 0.5 * ynum as f64 / xnum as f64;
     let ymin = -ymax;
 
-    let dx = (xmax - xmin) / (xnum as f64);
-    let dy = (ymax - ymin) / (ynum as f64);
-
-    let coords = (0..ynum).flat_map(
-        |y| (0..xnum).zip(std::iter::repeat(y))
-                   .map(|(x, y)|
-                        Complex { re: xmin + dx * (x as f64 + 0.5),
-                                  im: ymin + dy * (y as f64 + 0.5)}));
+    let coords = lib::span(ymin, ymax, ynum).flat_map(
+        |y| lib::span(xmin, xmax, xnum).zip(std::iter::repeat(y))
+                                       .map(|(x, y)| Complex { re: x, im: y }));
     let niters: Vec<_> = coords.map(|c| { let res: Vec<_> = lib::mandelbrot(c).take(niter).collect(); res.len() }).collect();
     let imax = match niters.iter().max() {
         None => 0,
