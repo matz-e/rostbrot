@@ -1,0 +1,9 @@
+[package]
+name = "rostbrot"
+version = "0.1.0"
+authors = ["Matthias Wolf <matthias@sushinara.net>"]
+
+[dependencies]
+image = "*"
+num-complex = "*"
+palette = "*"
