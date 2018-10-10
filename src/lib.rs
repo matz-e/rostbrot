@@ -1,5 +1,4 @@
 extern crate num_complex;
-extern crate num_traits;
 
 use num_complex::Complex;
 use std::iter;

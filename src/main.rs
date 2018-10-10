@@ -8,10 +8,10 @@ use palette::{Srgb, LinSrgb, Hsv, Gradient, Pixel};
 mod lib;
 
 fn main() {
-    let xmin = -2.0;
+    let xmin = -1.5;
     let xmax = 1.5;
-    let xnum = 2000;
-    let ynum = 2000;
+    let xnum = 3000;
+    let ynum = 3000;
 
     let niter = 500;
 
