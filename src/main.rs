@@ -8,8 +8,8 @@ use palette::{Srgb, LinSrgb, Hsv, Gradient, Pixel};
 mod lib;
 
 fn main() {
-    let xmin = -1.5;
-    let xmax = 1.5;
+    let xmin = -1.7;
+    let xmax = 0.8;
     let xnum = 3000;
     let ynum = 3000;
 
@@ -40,6 +40,8 @@ fn main() {
         // Hsv::from(LinSrgb::new(0.1, 1.0, 0.1)),
         // Hsv::from(LinSrgb::new(0.1, 0.1, 1.0)),
         Hsv::from(LinSrgb::new(0.0, 0.0, 0.0)),
+        Hsv::from(LinSrgb::new(0.1, 0.1, 0.1)),
+        Hsv::from(LinSrgb::new(0.4, 0.4, 0.4)),
         Hsv::from(LinSrgb::new(1.0, 1.0, 1.0))
     ]).take(imax as usize + 1).collect();
 
