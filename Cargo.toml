@@ -1,7 +1,7 @@
 [package]
 name = "rostbrot"
 version = "0.1.0"
-authors = ["Matthias Wolf <matthias@sushinara.net>"]
+authors = ["Matthias Wolf <m@sushinara.net>"]
 
 [dependencies]
 image = "*"

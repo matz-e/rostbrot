@@ -1,30 +1,68 @@
 extern crate num_complex;
+extern crate num_traits;
 
 use num_complex::Complex;
+use std::iter;
 
-pub struct LinearSequence {
-    start: f64,
-    end: f64,
-    step: f64,
-    counter: u32,
+pub struct Binning<T> {
+    scale: T,
+    min: T,
+    num: usize,
 }
 
-impl Iterator for LinearSequence {
-    type Item = f64;
-
-    fn next(&mut self) -> Option<f64> {
-        let val = (self.counter as f64 + 0.5) * self.step + self.start;
-        self.counter = self.counter + 1;
-        if self.end <= val {
-            return None;
+impl Binning<f64> {
+    fn bin(&self, n: f64) -> Option<usize> {
+        // usize::from((n - self.min) * self.scale).min(self.num).max(0)
+        let cand = ((n - self.min) * self.scale) as i64;
+        if cand < 0 || cand >= self.num as i64 {
+            return None
+        } else {
+            return Some(cand as usize);
         }
-        return Some(val);
+    }
+
+    fn iter(&self) -> impl Iterator<Item = f64> + '_ {
+        (0..self.num).map(move |n|
+                          self.min + (n as f64 + 0.5) / self.scale)
     }
 }
 
-pub fn span(min: f64, max: f64, num: u32) -> LinearSequence {
-    let step = (max - min) / num as f64;
-    LinearSequence { start: min, end: max, step, counter: 0 }
+pub struct Histogram<T> {
+    xaxis: Binning<T>,
+    yaxis: Binning<T>,
+    bins: Vec<usize>,
+}
+
+impl Histogram<f64> {
+    pub fn centers(&self) -> impl Iterator<Item = (f64, f64)> + '_ {
+        self.yaxis.iter()
+            .flat_map(move |y| 
+                      self.xaxis.iter().zip(iter::repeat(y)))
+    }
+
+    pub fn values(&self) -> impl Iterator<Item = &usize> {
+        self.bins.iter()
+    }
+
+    pub fn fill(&mut self, x: f64, y: f64) {
+        let nx = self.xaxis.bin(x);
+        let ny = self.yaxis.bin(y);
+        if !nx.is_some() || !ny.is_some() {
+            return
+        }
+        let idx = nx.unwrap() + ny.unwrap() * self.xaxis.num;
+        self.bins[idx] += 1;
+    }
+}
+
+pub fn histogram(xmin: f64, xmax: f64, xnum: usize,
+                 ymin: f64, ymax: f64, ynum: usize) -> Histogram<f64> {
+    let xaxis = Binning { scale: xnum as f64 / (xmax - xmin),
+                          min: xmin, num: xnum };
+    let yaxis = Binning { scale: ynum as f64 / (ymax - ymin),
+                          min: ymin, num: ynum };
+    let bins = vec![0; xnum * ynum];
+    Histogram { xaxis, yaxis, bins }
 }
 
 pub struct ComplexSequence<T> {
@@ -53,9 +91,19 @@ mod tests {
     use super::*;
 
     #[test]
-    fn linear_seq() {
-        let res: Vec<_> = span(0.0, 1.0, 2).collect();
+    fn binning_iter() {
+        let bins = Binning { scale: 2.0, min: 0.0, num: 2 };
+        let res: Vec<f64> = bins.iter().collect();
         assert_eq!(res, vec![0.25, 0.75]);
+    }
+
+    #[test]
+    fn binning_fill() {
+        let bins = Binning { scale: 1.0, min: 0.0, num: 2 };
+        let b1 = bins.bin(0.1);
+        assert_eq!(b1, Some(0));
+        let b2 = bins.bin(5.0);
+        assert_eq!(b2, None);
     }
 
     #[test]
