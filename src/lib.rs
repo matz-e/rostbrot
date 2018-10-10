@@ -106,6 +106,18 @@ mod tests {
     }
 
     #[test]
+    fn histogram_usage() {
+        let mut histo = histogram(0.0, 1.0, 2, 0.0, 1.0, 1);
+        let centers: Vec<_> = histo.centers().collect();
+        assert_eq!(centers, vec![(0.25, 0.5), (0.75, 0.5)]);
+        histo.fill(-2.0, 3.0);
+        histo.fill(0.51, 0.1);
+        let values: Vec<_> = histo.values().collect();
+        assert_eq!(*values[0], 0 as usize);
+        assert_eq!(*values[1], 1 as usize);
+    }
+
+    #[test]
     fn mandelbrot_seq() {
         let c = Complex { re: 0.0, im: 0.0 };
 
