@@ -6,17 +6,16 @@ use std::iter;
 pub struct Binning<T> {
     scale: T,
     min: T,
-    num: usize,
+    num: u32,
 }
 
 impl Binning<f64> {
-    fn bin(&self, n: f64) -> Option<usize> {
-        // usize::from((n - self.min) * self.scale).min(self.num).max(0)
+    fn bin(&self, n: f64) -> Option<u32> {
         let cand = ((n - self.min) * self.scale) as i64;
         if cand < 0 || cand >= self.num as i64 {
             return None
         } else {
-            return Some(cand as usize);
+            return Some(cand as u32);
         }
     }
 
@@ -29,7 +28,7 @@ impl Binning<f64> {
 pub struct Histogram<T> {
     xaxis: Binning<T>,
     yaxis: Binning<T>,
-    bins: Vec<usize>,
+    bins: Vec<u32>,
 }
 
 impl Histogram<f64> {
@@ -39,7 +38,7 @@ impl Histogram<f64> {
                       self.xaxis.iter().zip(iter::repeat(y)))
     }
 
-    pub fn values(&self) -> impl Iterator<Item = &usize> {
+    pub fn values(&self) -> impl Iterator<Item = &u32> {
         self.bins.iter()
     }
 
@@ -50,17 +49,17 @@ impl Histogram<f64> {
             return
         }
         let idx = nx.unwrap() + ny.unwrap() * self.xaxis.num;
-        self.bins[idx] += 1;
+        self.bins[idx as usize] += 1;
     }
 }
 
-pub fn histogram(xmin: f64, xmax: f64, xnum: usize,
-                 ymin: f64, ymax: f64, ynum: usize) -> Histogram<f64> {
+pub fn histogram(xmin: f64, xmax: f64, xnum: u32,
+                 ymin: f64, ymax: f64, ynum: u32) -> Histogram<f64> {
     let xaxis = Binning { scale: xnum as f64 / (xmax - xmin),
                           min: xmin, num: xnum };
     let yaxis = Binning { scale: ynum as f64 / (ymax - ymin),
                           min: ymin, num: ynum };
-    let bins = vec![0; xnum * ynum];
+    let bins = vec![0; (xnum * ynum) as usize];
     Histogram { xaxis, yaxis, bins }
 }
 
@@ -113,8 +112,8 @@ mod tests {
         histo.fill(-2.0, 3.0);
         histo.fill(0.51, 0.1);
         let values: Vec<_> = histo.values().collect();
-        assert_eq!(*values[0], 0 as usize);
-        assert_eq!(*values[1], 1 as usize);
+        assert_eq!(*values[0], 0 as u32);
+        assert_eq!(*values[1], 1 as u32);
     }
 
     #[test]

@@ -4,6 +4,10 @@ version = "0.1.0"
 authors = ["Matthias Wolf <m@sushinara.net>"]
 
 [dependencies]
+clap = "*"
 image = "*"
 num-complex = "*"
 palette = "*"
+serde = "*"
+serde_derive = "*"
+serde_yaml = "*"
