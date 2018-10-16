@@ -65,11 +65,12 @@ fn main() {
     let mut data: Vec<LinSrgb> = vec![LinSrgb::new(0.0, 0.0, 0.0); ntotal];
 
     for layer in config.layers {
-        println!("Performing {} iterations per pixel", layer.iterations);
         let mut bar = ProgressBar::new(ntotal as u64);
         bar.show_counter = false;
         bar.show_percent = false;
         bar.show_speed = false;
+        let msg = format!("{} iterations per pixel ", layer.iterations);
+        bar.message(&msg);
         let mut histo = lib::histogram(config.area.x[0],
                                        config.area.x[1],
                                        config.dimensions.x,
@@ -94,9 +95,8 @@ fn main() {
             Some(x) => *x
         };
 
-        bar.finish();
-
-        println!("Mapping with a maximum of {} hits", imax);
+        let msg = format!("{} iterations per pixel, maximum of {} hits", layer.iterations, imax);
+        bar.finish_print(&msg);
 
         let gradient: Gradient<Hsv> = Gradient::new(
             layer.colors.iter()
