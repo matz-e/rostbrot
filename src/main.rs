@@ -2,6 +2,7 @@ extern crate clap;
 extern crate image;
 extern crate num_complex;
 extern crate palette;
+extern crate pbr;
 
 #[macro_use]
 extern crate serde_derive;
@@ -9,7 +10,8 @@ extern crate serde_yaml;
 
 use clap::{App, Arg};
 use num_complex::Complex;
-use palette::{Blend, Gradient, Hsv, LinSrgba, Srgba, Pixel};
+use palette::{Blend, Gradient, Hsv, LinSrgb, Srgb, Pixel};
+use pbr::ProgressBar;
 use std::fs::File;
 
 mod lib;
@@ -17,7 +19,7 @@ mod lib;
 #[derive(Deserialize)]
 struct Layer {
     iterations: usize,
-    colors: Vec<[f32; 4]>
+    colors: Vec<[f32; 3]>
 }
 
 #[derive(Deserialize)]
@@ -60,10 +62,14 @@ fn main() {
     let config: Configuration = serde_yaml::from_reader(config_file).unwrap();
 
     let ntotal = (config.dimensions.x * config.dimensions.y) as usize;
-    let mut data: Vec<LinSrgba> = vec![LinSrgba::new(0.0, 0.0, 0.0, 0.0); ntotal];
+    let mut data: Vec<LinSrgb> = vec![LinSrgb::new(0.0, 0.0, 0.0); ntotal];
 
     for layer in config.layers {
         println!("Performing {} iterations per pixel", layer.iterations);
+        let mut bar = ProgressBar::new(ntotal as u64);
+        bar.show_counter = false;
+        bar.show_percent = false;
+        bar.show_speed = false;
         let mut histo = lib::histogram(config.area.x[0],
                                        config.area.x[1],
                                        config.dimensions.x,
@@ -81,25 +87,30 @@ fn main() {
                     histo.fill(z.re, z.im);
                 }
             }
+            bar.inc();
         }
         let imax = match histo.values().max() {
             None => 0,
             Some(x) => *x
         };
 
+        bar.finish();
+
+        println!("Mapping with a maximum of {} hits", imax);
+
         let gradient: Gradient<Hsv> = Gradient::new(
             layer.colors.iter()
-                        .map(|[r, g, b, a]|
-                             Hsv::from(Srgba::new(*r, *g, *b, *a)))
+                        .map(|[r, g, b]|
+                             Hsv::from(Srgb::new(*r, *g, *b)))
         );
         let colors: Vec<_> = gradient.take(imax as usize + 1).collect();
         for (n, i) in histo.values().enumerate() {
-            let color = LinSrgba::from(colors[*i as usize]);
-            data[n] = data[n].overlay(color);
+            let color = LinSrgb::from(colors[*i as usize]);
+            data[n] = data[n].plus(color);
         }
     }
 
-    let temp: Vec<[u8; 4]> = data.iter()
+    let temp: Vec<[u8; 3]> = data.iter()
                                  .map(|c| c.into_format()
                                            .into_raw())
                                  .collect();
@@ -108,5 +119,5 @@ fn main() {
                        buffer,
                        config.dimensions.x,
                        config.dimensions.y,
-                       image::RGBA(8)).unwrap()
+                       image::RGB(8)).unwrap()
 }
