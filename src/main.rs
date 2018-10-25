@@ -71,12 +71,12 @@ fn main() {
         bar.show_speed = false;
         let msg = format!("{} iterations per pixel ", layer.iterations);
         bar.message(&msg);
-        let mut histo = lib::histogram(config.area.x[0],
-                                       config.area.x[1],
-                                       config.dimensions.x,
-                                       config.area.y[0],
-                                       config.area.y[1],
-                                       config.dimensions.y);
+        let mut histo = lib::Histogram::new(config.area.x[0],
+                                            config.area.x[1],
+                                            config.dimensions.x,
+                                            config.area.y[0],
+                                            config.area.y[1],
+                                            config.dimensions.y);
 
         let centers: Vec<_> = histo.centers().collect();
         for (x, y) in centers {
@@ -90,7 +90,8 @@ fn main() {
             }
             bar.inc();
         }
-        let imax = match histo.values().max() {
+        let mapped: Vec<_> = histo.values().map(|i| (((*i as f64 + 1.0).ln() + 1.0).ln().powf(0.4) * 100.0) as usize).collect();
+        let imax = match mapped.iter().max() {
             None => 0,
             Some(x) => *x
         };
@@ -104,8 +105,8 @@ fn main() {
                              Hsv::from(Srgb::new(*r, *g, *b)))
         );
         let colors: Vec<_> = gradient.take(imax as usize + 1).collect();
-        for (n, i) in histo.values().enumerate() {
-            let color = LinSrgb::from(colors[*i as usize]);
+        for (n, &i) in mapped.iter().enumerate() {
+            let color = LinSrgb::from(colors[i as usize]);
             data[n] = data[n].plus(color);
         }
     }

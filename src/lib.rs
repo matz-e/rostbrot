@@ -51,16 +51,16 @@ impl Histogram<f64> {
         let idx = nx.unwrap() + ny.unwrap() * self.xaxis.num;
         self.bins[idx as usize] += 1;
     }
-}
 
-pub fn histogram(xmin: f64, xmax: f64, xnum: u32,
-                 ymin: f64, ymax: f64, ynum: u32) -> Histogram<f64> {
-    let xaxis = Binning { scale: xnum as f64 / (xmax - xmin),
-                          min: xmin, num: xnum };
-    let yaxis = Binning { scale: ynum as f64 / (ymax - ymin),
-                          min: ymin, num: ynum };
-    let bins = vec![0; (xnum * ynum) as usize];
-    Histogram { xaxis, yaxis, bins }
+    pub fn new(xmin: f64, xmax: f64, xnum: u32,
+                     ymin: f64, ymax: f64, ynum: u32) -> Histogram<f64> {
+        let xaxis = Binning { scale: xnum as f64 / (xmax - xmin),
+                              min: xmin, num: xnum };
+        let yaxis = Binning { scale: ynum as f64 / (ymax - ymin),
+                              min: ymin, num: ynum };
+        let bins = vec![0; (xnum * ynum) as usize];
+        Histogram { xaxis, yaxis, bins }
+    }
 }
 
 pub struct ComplexSequence<T> {
