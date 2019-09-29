@@ -7,6 +7,7 @@ authors = ["Matthias Wolf <m@sushinara.net>"]
 clap = "*"
 image = "*"
 num-complex = "*"
+num-traits = "*"
 palette = "*"
 pbr = "*"
 serde = "*"

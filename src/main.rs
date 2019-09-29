@@ -4,13 +4,13 @@ extern crate num_complex;
 extern crate palette;
 extern crate pbr;
 
-#[macro_use]
-extern crate serde_derive;
+extern crate serde;
+#[macro_use] extern crate serde_derive;
 extern crate serde_yaml;
 
 use clap::{App, Arg};
 use num_complex::Complex;
-use palette::{Blend, Gradient, Hsv, LinSrgb, Srgb, Pixel};
+use palette::{Gradient, Hsv, LinSrgb, Srgb, Pixel};
 use pbr::ProgressBar;
 use std::fs::File;
 
@@ -22,16 +22,28 @@ struct Layer {
     colors: Vec<[f32; 3]>
 }
 
-#[derive(Deserialize)]
-struct Dimensions {
-    x: u32,
-    y: u32
+#[derive(Deserialize, Serialize)]
+struct LayerData {
+    iterations: usize,
+    data: Vec<u32>,
 }
 
-#[derive(Deserialize)]
+impl PartialEq<Layer> for LayerData {
+    fn eq(&self, other: &Layer) -> bool {
+        self.iterations == other.iterations
+    }
+}
+
+#[derive(Clone, Copy, Deserialize, Serialize, PartialEq)]
 struct Area {
-    x: [f64; 2],
-    y: [f64; 2]
+    x: [f32; 2],
+    y: [f32; 2]
+}
+
+#[derive(Clone, Copy, Deserialize, Serialize, PartialEq)]
+struct Dimensions {
+    x: u16,
+    y: u16
 }
 
 #[derive(Deserialize)]
@@ -41,11 +53,122 @@ struct Configuration {
     layers: Vec<Layer>,
 }
 
+#[derive(Deserialize, Serialize)]
+struct Cache {
+    area: Area,
+    dimensions: Dimensions,
+    layers: Vec<LayerData>,
+    valid: bool,
+}
+
+impl PartialEq<Configuration> for Cache {
+    fn eq(&self, other: &Configuration) -> bool {
+        if self.area != other.area ||
+           self.dimensions != other.dimensions ||
+           self.layers.len() != other.layers.len() {
+            return false;
+        }
+        for (&ref a, &ref b) in self.layers.iter().zip(other.layers.iter()) {
+            if a != b {
+                return false;
+            }
+        }
+        true
+    }
+}
+
+impl Cache {
+    fn new(c: &Configuration) -> Cache {
+        let ntotal = (c.dimensions.x * c.dimensions.y) as usize;
+        Cache {
+            area: c.area,
+            dimensions: c.dimensions,
+            layers: c.layers.iter().map(|l| {
+                LayerData {
+                    iterations: l.iterations,
+                    data: vec![0; ntotal],
+                }
+            }).collect(),
+            valid: false
+        }
+    }
+}
+
+fn color_cache<'a>(cache: &'a Cache, config: &'a Configuration) -> impl Iterator<Item = impl Iterator<Item = LinSrgb> + 'a> + 'a {
+    cache.layers.iter().zip(config.layers.iter()).map(|(d, c)| {
+        let imax = match d.data.iter().max() {
+            Some(&n) => n,
+            None => 0,
+        };
+
+        let gradient: Gradient<Hsv> = Gradient::new(
+            c.colors.iter()
+                    .map(|[r, g, b]|
+                         Hsv::from(Srgb::new(*r, *g, *b)))
+        );
+
+        let colors: Vec<_> = gradient.take(imax as usize + 1).collect();
+        d.data.iter().map(move |&i| LinSrgb::from(colors[i as usize]))
+    })
+}
+
+fn populate_cache(cache: &mut Cache) {
+    let ntotal = (cache.dimensions.x * cache.dimensions.y) as usize;
+    let max_iter = match cache.layers.iter().map(|l| l.iterations).max() {
+        Some(n) => n,
+        None => 0,
+    };
+
+    let iterations: Vec<_> = cache.layers.iter().map(|l| l.iterations).enumerate().collect();
+
+    let mut data: Vec<&mut [u32]> = vec![];
+    for l in cache.layers.iter_mut() {
+        data.push(&mut l.data[..]);
+    }
+
+    let mut histo = lib::Histogram::new(cache.area.x[0],
+                                        cache.area.x[1],
+                                        cache.dimensions.x,
+                                        cache.area.y[0],
+                                        cache.area.y[1],
+                                        cache.dimensions.y,
+                                        data);
+
+    let mut bar = ProgressBar::new(ntotal as u64);
+    bar.show_counter = false;
+    bar.show_percent = false;
+    bar.show_speed = false;
+    let msg = format!("{} iterations per pixel ", max_iter);
+    bar.message(&msg);
+
+    let centers: Vec<_> = histo.centers().collect();
+    for (x, y) in centers {
+        let c = Complex { re: x, im: y };
+        let nums: Vec<_> = lib::mandelbrot(c)
+                               .take(max_iter)
+                               .collect();
+        for (layer, maximum) in iterations.iter() {
+            if nums.len() < *maximum {
+                for z in nums.iter() {
+                    histo.fill(*layer, z.re, z.im);
+                }
+            }
+        }
+        bar.inc();
+    }
+
+    bar.finish();
+}
+
 fn main() {
     let matches = App::new("Rostbrot")
         .version("0.1.0")
         .author("Matthias Wolf <m@sushinara.net>")
         .about("Generate Buddhabrot images")
+        .arg(Arg::with_name("cache")
+                 .takes_value(true)
+                 .long("cache")
+                 .help("A cache file to use; default: 'cache.yaml'"))
         .arg(Arg::with_name("config")
                  .takes_value(true)
                  .required(true)
@@ -61,55 +184,31 @@ fn main() {
     let config_file = File::open(matches.value_of("config").unwrap()).unwrap();
     let config: Configuration = serde_yaml::from_reader(config_file).unwrap();
 
-    let ntotal = (config.dimensions.x * config.dimensions.y) as usize;
-    let mut data: Vec<LinSrgb> = vec![LinSrgb::new(0.0, 0.0, 0.0); ntotal];
+    let cache_filename = matches.value_of("cache").unwrap_or("cache.yaml");
+    let mut cache = match File::open(cache_filename) {
+        Ok(f) => match serde_yaml::from_reader(f) {
+            Ok(c) => c,
+            _ => Cache::new(&config),
+        },
+        _ => Cache::new(&config),
+    };
 
-    for layer in config.layers {
-        let mut bar = ProgressBar::new(ntotal as u64);
-        bar.show_counter = false;
-        bar.show_percent = false;
-        bar.show_speed = false;
-        let msg = format!("{} iterations per pixel ", layer.iterations);
-        bar.message(&msg);
-        let mut histo = lib::Histogram::new(config.area.x[0],
-                                            config.area.x[1],
-                                            config.dimensions.x,
-                                            config.area.y[0],
-                                            config.area.y[1],
-                                            config.dimensions.y);
-
-        let centers: Vec<_> = histo.centers().collect();
-        for (x, y) in centers {
-            let c = Complex { re: x, im: y };
-            let iters: Vec<_> = lib::mandelbrot(c).take(layer.iterations)
-                                                  .collect();
-            if iters.len() < layer.iterations {
-                for z in iters {
-                    histo.fill(z.re, z.im);
-                }
-            }
-            bar.inc();
-        }
-        let mapped: Vec<_> = histo.values().map(|i| (((*i as f64 + 1.0).ln() + 1.0).ln().powf(0.4) * 100.0) as usize).collect();
-        let imax = match mapped.iter().max() {
-            None => 0,
-            Some(x) => *x
-        };
-
-        let msg = format!("{} iterations per pixel, maximum of {} hits", layer.iterations, imax);
-        bar.finish_print(&msg);
-
-        let gradient: Gradient<Hsv> = Gradient::new(
-            layer.colors.iter()
-                        .map(|[r, g, b]|
-                             Hsv::from(Srgb::new(*r, *g, *b)))
-        );
-        let colors: Vec<_> = gradient.take(imax as usize + 1).collect();
-        for (n, &i) in mapped.iter().enumerate() {
-            let color = LinSrgb::from(colors[i as usize]);
-            data[n] = data[n].plus(color);
-        }
+    if !cache.valid {
+        populate_cache(&mut cache);
     }
+
+    let ntotal = (cache.dimensions.x * cache.dimensions.y) as usize;
+    let data: Vec<LinSrgb> = vec![LinSrgb::new(0.0, 0.0, 0.0); ntotal];
+
+    // for layer in config.layers {
+    //     let mapped: Vec<_> = histo.values().map(|i| (((*i as f64 + 1.0).ln() + 1.0).ln().powf(0.4) * 100.0) as usize).collect();
+    //     let imax = match mapped.iter().max() {
+    //         None => 0,
+    //         Some(x) => *x
+    //     };
+
+
+    // }
 
     let temp: Vec<[u8; 3]> = data.iter()
                                  .map(|c| c.into_format()
@@ -118,7 +217,7 @@ fn main() {
     let buffer: &[u8] = &temp.concat();
     image::save_buffer(matches.value_of("filename").unwrap(),
                        buffer,
-                       config.dimensions.x,
-                       config.dimensions.y,
+                       config.dimensions.x as u32,
+                       config.dimensions.y as u32,
                        image::RGB(8)).unwrap()
 }
