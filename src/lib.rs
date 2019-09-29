@@ -57,8 +57,8 @@ impl<'a, T> Histogram<'a, T>
         if !nx.is_some() || !ny.is_some() {
             return
         }
-        let idx = nx.unwrap() + ny.unwrap() * self.xaxis.num;
-        self.bins[i][idx as usize] += 1;
+        let idx = nx.unwrap() as usize + ny.unwrap() as usize * self.xaxis.num as usize;
+        self.bins[i][idx] += 1;
     }
 
     pub fn new(xmin: T, xmax: T, xnum: u16,

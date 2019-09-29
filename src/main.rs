@@ -46,6 +46,12 @@ struct Dimensions {
     y: u16
 }
 
+impl Dimensions {
+    fn size(&self) -> usize {
+        self.x as usize * self.y as usize
+    }
+}
+
 #[derive(Deserialize)]
 struct Configuration {
     area: Area,
@@ -79,14 +85,13 @@ impl PartialEq<Configuration> for Cache {
 
 impl Cache {
     fn new(c: &Configuration) -> Cache {
-        let ntotal = (c.dimensions.x * c.dimensions.y) as usize;
         Cache {
             area: c.area,
             dimensions: c.dimensions,
             layers: c.layers.iter().map(|l| {
                 LayerData {
                     iterations: l.iterations,
-                    data: vec![0; ntotal],
+                    data: vec![0; c.dimensions.size()],
                 }
             }).collect(),
             valid: false
@@ -113,7 +118,6 @@ fn color_cache<'a>(cache: &'a Cache, config: &'a Configuration) -> impl Iterator
 }
 
 fn populate_cache(cache: &mut Cache) {
-    let ntotal = (cache.dimensions.x * cache.dimensions.y) as usize;
     let max_iter = match cache.layers.iter().map(|l| l.iterations).max() {
         Some(n) => n,
         None => 0,
@@ -134,7 +138,7 @@ fn populate_cache(cache: &mut Cache) {
                                         cache.dimensions.y,
                                         data);
 
-    let mut bar = ProgressBar::new(ntotal as u64);
+    let mut bar = ProgressBar::new(cache.dimensions.size() as u64);
     bar.show_counter = false;
     bar.show_percent = false;
     bar.show_speed = false;
@@ -197,8 +201,7 @@ fn main() {
         populate_cache(&mut cache);
     }
 
-    let ntotal = (cache.dimensions.x * cache.dimensions.y) as usize;
-    let data: Vec<LinSrgb> = vec![LinSrgb::new(0.0, 0.0, 0.0); ntotal];
+    let data: Vec<LinSrgb> = vec![LinSrgb::new(0.0, 0.0, 0.0); cache.dimensions.size()];
 
     // for layer in config.layers {
     //     let mapped: Vec<_> = histo.values().map(|i| (((*i as f64 + 1.0).ln() + 1.0).ln().powf(0.4) * 100.0) as usize).collect();
