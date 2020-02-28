@@ -3,9 +3,11 @@ extern crate image;
 extern crate num_complex;
 extern crate palette;
 extern crate pbr;
+extern crate bincode;
 
 extern crate serde;
-#[macro_use] extern crate serde_derive;
+#[macro_use]
+extern crate serde_derive;
 extern crate serde_yaml;
 
 use clap::{App, Arg};
@@ -13,6 +15,8 @@ use num_complex::Complex;
 use palette::{Gradient, Hsv, LinSrgb, Srgb, Pixel};
 use pbr::ProgressBar;
 use std::fs::File;
+use std::io::BufWriter;
+use bincode::{serialize_into, deserialize_from};
 
 mod lib;
 
@@ -162,6 +166,9 @@ fn populate_cache(cache: &mut Cache) {
     }
 
     bar.finish();
+
+    // FIXME needs to be cross checked!
+    cache.valid = true;
 }
 
 fn main() {
@@ -190,15 +197,22 @@ fn main() {
 
     let cache_filename = matches.value_of("cache").unwrap_or("cache.yaml");
     let mut cache = match File::open(cache_filename) {
-        Ok(f) => match serde_yaml::from_reader(f) {
+        Ok(f) => match bincode::deserialize_from(f) {
             Ok(c) => c,
-            _ => Cache::new(&config),
+            _ => {println!("no desirialization!");Cache::new(&config)},
         },
         _ => Cache::new(&config),
     };
 
     if !cache.valid {
+        println!("populating cache");
         populate_cache(&mut cache);
+
+        let mut f = BufWriter::new(File::create(cache_filename).unwrap());
+        match serialize_into(&mut f, &cache) {
+            Ok(r) => r,
+            _ => {println!("serialization error!");}
+        };
     }
 
     let data: Vec<LinSrgb> = vec![LinSrgb::new(0.0, 0.0, 0.0); cache.dimensions.size()];

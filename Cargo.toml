@@ -4,6 +4,7 @@ version = "0.1.0"
 authors = ["Matthias Wolf <m@sushinara.net>"]
 
 [dependencies]
+bincode = "*"
 clap = "*"
 image = "*"
 num-complex = "*"
