@@ -15,6 +15,7 @@ use num_complex::Complex;
 use palette::{Gradient, Hsv, LinSrgb, Srgb, Pixel};
 use pbr::ProgressBar;
 use std::fs::File;
+use std::io;
 use std::io::BufWriter;
 use bincode::{serialize_into, deserialize_from};
 
@@ -101,6 +102,19 @@ impl Cache {
             valid: false
         }
     }
+
+    fn load(filename: &str, config: &Configuration) -> Cache {
+        let file = match File::open(filename) {
+            Ok(f) => f,
+            _ => return Cache::new(config)
+        };
+        match bincode::deserialize_from(file) {
+            Ok(c) => {
+                if c == *config { c } else { Cache::new(config) }
+            },
+            _ => Cache::new(config)
+        }
+    }
 }
 
 fn color_cache<'a>(cache: &'a Cache, config: &'a Configuration) -> impl Iterator<Item = impl Iterator<Item = LinSrgb> + 'a> + 'a {
@@ -171,8 +185,8 @@ fn populate_cache(cache: &mut Cache) {
     cache.valid = true;
 }
 
-fn main() {
-    let matches = App::new("Rostbrot")
+fn main() -> Result<(), io::Error> {
+    let cli = App::new("Rostbrot")
         .version("0.1.0")
         .author("Matthias Wolf <m@sushinara.net>")
         .about("Generate Buddhabrot images")
@@ -192,20 +206,13 @@ fn main() {
                  .help("The output filename"))
         .get_matches();
 
-    let config_file = File::open(matches.value_of("config").unwrap()).unwrap();
+    let config_file = File::open(cli.value_of("config").unwrap()).unwrap();
     let config: Configuration = serde_yaml::from_reader(config_file).unwrap();
 
-    let cache_filename = matches.value_of("cache").unwrap_or("cache.yaml");
-    let mut cache = match File::open(cache_filename) {
-        Ok(f) => match bincode::deserialize_from(f) {
-            Ok(c) => c,
-            _ => {println!("no desirialization!");Cache::new(&config)},
-        },
-        _ => Cache::new(&config),
-    };
+    let cache_filename = cli.value_of("cache").unwrap_or("cache.yaml");
+    let mut cache = Cache::load(&cache_filename, &config);
 
     if !cache.valid {
-        println!("populating cache");
         populate_cache(&mut cache);
 
         let mut f = BufWriter::new(File::create(cache_filename).unwrap());
@@ -232,9 +239,10 @@ fn main() {
                                            .into_raw())
                                  .collect();
     let buffer: &[u8] = &temp.concat();
-    image::save_buffer(matches.value_of("filename").unwrap(),
+    image::save_buffer(cli.value_of("filename").unwrap(),
                        buffer,
                        config.dimensions.x as u32,
                        config.dimensions.y as u32,
-                       image::RGB(8)).unwrap()
+                       image::RGB(8)).unwrap();
+    Ok(())
 }
