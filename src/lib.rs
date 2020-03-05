@@ -157,14 +157,15 @@ mod tests {
 
     #[test]
     fn histogram_usage() {
-        let mut histo = histogram(0.0, 1.0, 2, 0.0, 1.0, 1);
+        let values = &mut [0, 0];
+        let data: Vec<&mut [u32]> = vec![values];
+        let mut histo = Histogram::new(0.0, 1.0, 2, 0.0, 1.0, 1, data);
         let centers: Vec<_> = histo.centers().collect();
         assert_eq!(centers, vec![(0.25, 0.5), (0.75, 0.5)]);
-        histo.fill(-2.0, 3.0);
-        histo.fill(0.51, 0.1);
-        let values: Vec<_> = histo.values().collect();
-        assert_eq!(*values[0], 0 as u32);
-        assert_eq!(*values[1], 1 as u32);
+        histo.fill(0, -2.0, 3.0);
+        histo.fill(0, 0.51, 0.1);
+        assert_eq!(values[0], 0 as u32);
+        assert_eq!(values[1], 1 as u32);
     }
 
     #[test]
