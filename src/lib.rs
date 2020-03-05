@@ -60,7 +60,7 @@ where
     pub fn fill(&mut self, i: usize, x: T, y: T) {
         let nx = self.xaxis.bin(x);
         let ny = self.yaxis.bin(y);
-        if !nx.is_some() || !ny.is_some() {
+        if nx.is_none() || ny.is_none() {
             return;
         }
         let idx = nx.unwrap() as usize + ny.unwrap() as usize * self.xaxis.num as usize;
@@ -122,7 +122,7 @@ where
             re: start,
             im: start,
         },
-        c: c,
+        c,
         r: radius,
     }
 }

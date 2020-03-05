@@ -175,12 +175,12 @@ fn populate_cache(cache: &mut Cache) {
         data,
     );
 
-    let mut bar = ProgressBar::new(cache.dimensions.size() as u64);
-    bar.show_counter = false;
-    bar.show_percent = false;
-    bar.show_speed = false;
+    let mut pbar = ProgressBar::new(cache.dimensions.size() as u64);
+    pbar.show_counter = false;
+    pbar.show_percent = false;
+    pbar.show_speed = false;
     let msg = format!("{} iterations per pixel ", max_iter);
-    bar.message(&msg);
+    pbar.message(&msg);
 
     let centers: Vec<_> = histo.centers().collect();
     for (x, y) in centers {
@@ -193,10 +193,10 @@ fn populate_cache(cache: &mut Cache) {
                 }
             }
         }
-        bar.inc();
+        pbar.inc();
     }
 
-    bar.finish();
+    pbar.finish();
 
     // FIXME needs to be cross checked!
     cache.valid = true;
