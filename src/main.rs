@@ -1,5 +1,6 @@
 extern crate clap;
 extern crate image;
+extern crate rayon;
 
 extern crate serde;
 #[macro_use]
@@ -8,7 +9,9 @@ extern crate serde_yaml;
 
 use cache::{Cache, Configuration};
 use clap::{App, Arg};
+use rayon::prelude::*;
 use std::cmp;
+use std::f32;
 use std::fs::File;
 use std::io;
 use std::io::BufWriter;
@@ -62,28 +65,39 @@ fn main() -> Result<(), io::Error> {
 
     let mut imgbuf: image::RgbImage =
         image::ImageBuffer::new(config.dimensions.x as u32, config.dimensions.y as u32);
-    let threshold: u32 = 5;
-    let maxvalues: Vec<u32> = cache
+
+    let threshold = 5 as f32;
+    let luts: Vec<Vec<u8>> = cache
         .layers
         .iter()
-        .map(|l| l.data.iter().max().unwrap() - threshold)
+        .map(|l| l.data.iter().max().unwrap())
+        .map(|m| {
+            (0..=*m)
+                .into_par_iter()
+                .map(|i| {
+                    let frac = (i as f32 - threshold).max(0.0) / (*m as f32 - threshold).max(0.0);
+                    let mapped = (frac / (1.0 - frac)).atan() / f32::consts::FRAC_PI_2;
+                    (mapped * 255.0) as u8
+                })
+                .collect()
+        })
         .collect();
-    for (x, y, pixel) in imgbuf.enumerate_pixels_mut() {
-        let idx = (x + y * config.dimensions.x as u32) as usize;
-        // let v = 0;
-        let mut color: [u8; 3] = [0, 0, 0];
-        for (i, maxvalue) in maxvalues.iter().enumerate() {
-            let v = (cmp::max(
-                0,
-                cmp::max(cache.layers[i].data[idx], threshold) - threshold,
-            ) * 255
-                / maxvalue) as u8;
-            for j in 0..3 {
-                color[j] = cmp::max(color[j], cmp::min(config.layers[i].color[j], v));
+    imgbuf
+        .enumerate_pixels_mut()
+        .par_bridge()
+        .for_each(|(x, y, pixel)| {
+            // for (x, y, pixel) in imgbuf.enumerate_pixels_mut() {
+            let idx = (x + y * config.dimensions.x as u32) as usize;
+            // let v = 0;
+            let mut color: [u8; 3] = [0, 0, 0];
+            for (i, lut) in luts.iter().enumerate() {
+                let v = lut[cache.layers[i].data[idx] as usize];
+                for j in 0..color.len() {
+                    color[j] = cmp::max(color[j], cmp::min(config.layers[i].color[j], v));
+                }
             }
-        }
-        *pixel = image::Rgb(color);
-    }
+            *pixel = image::Rgb(color);
+        });
     imgbuf.save(cli.value_of("filename").unwrap()).unwrap();
     Ok(())
 }
