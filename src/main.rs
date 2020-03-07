@@ -63,7 +63,11 @@ fn main() -> Result<(), io::Error> {
     let mut imgbuf: image::RgbImage =
         image::ImageBuffer::new(config.dimensions.x as u32, config.dimensions.y as u32);
     let threshold: u32 = 5;
-    let maxvalues: Vec<u32> = cache.layers.iter().map(|l| l.data.iter().max().unwrap() - threshold).collect();
+    let maxvalues: Vec<u32> = cache
+        .layers
+        .iter()
+        .map(|l| l.data.iter().max().unwrap() - threshold)
+        .collect();
     for (x, y, pixel) in imgbuf.enumerate_pixels_mut() {
         let idx = (x + y * config.dimensions.x as u32) as usize;
         // let v = 0;
