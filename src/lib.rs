@@ -47,14 +47,14 @@ impl<'a, T> Histogram<'a, T>
 where
     T: Float,
 {
+    fn index(&self, x: usize, y: usize) -> usize {
+        x + y * self.xaxis.num as usize
+    }
+
     pub fn centers(&self) -> impl Iterator<Item = (T, T)> + '_ {
         self.yaxis
             .iter()
             .flat_map(move |y| self.xaxis.iter().zip(iter::repeat(y)))
-    }
-
-    pub fn values(&self, layer: usize) -> impl Iterator<Item = &u32> {
-        self.bins[layer].iter()
     }
 
     pub fn fill(&mut self, i: usize, x: T, y: T) {
@@ -63,7 +63,7 @@ where
         if nx.is_none() || ny.is_none() {
             return;
         }
-        let idx = nx.unwrap() as usize + ny.unwrap() as usize * self.xaxis.num as usize;
+        let idx = self.index(nx.unwrap() as usize, ny.unwrap() as usize);
         self.bins[i][idx] += 1;
     }
 

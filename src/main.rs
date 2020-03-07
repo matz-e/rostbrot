@@ -2,7 +2,6 @@ extern crate bincode;
 extern crate clap;
 extern crate image;
 extern crate num_complex;
-extern crate palette;
 extern crate pbr;
 
 extern crate serde;
@@ -10,11 +9,10 @@ extern crate serde;
 extern crate serde_derive;
 extern crate serde_yaml;
 
-use bincode::{deserialize_from, serialize_into};
 use clap::{App, Arg};
 use num_complex::Complex;
-use palette::{Gradient, Hsv, LinSrgb, Pixel, Srgb};
 use pbr::ProgressBar;
+use std::cmp;
 use std::fs::File;
 use std::io;
 use std::io::BufWriter;
@@ -23,8 +21,7 @@ mod lib;
 
 #[derive(Deserialize)]
 struct Layer {
-    iterations: usize,
-    colors: Vec<[f32; 3]>,
+    iterations: usize
 }
 
 #[derive(Deserialize, Serialize)]
@@ -122,84 +119,61 @@ impl Cache {
             _ => Cache::new(config),
         }
     }
-}
 
-fn color_cache<'a>(
-    cache: &'a Cache,
-    config: &'a Configuration,
-) -> impl Iterator<Item = impl Iterator<Item = LinSrgb> + 'a> + 'a {
-    cache.layers.iter().zip(config.layers.iter()).map(|(d, c)| {
-        let imax = match d.data.iter().max() {
-            Some(&n) => n,
+    fn populate(&mut self) {
+        let max_iter = match self.layers.iter().map(|l| l.iterations).max() {
+            Some(n) => n,
             None => 0,
         };
 
-        let gradient: Gradient<Hsv> = Gradient::new(
-            c.colors
-                .iter()
-                .map(|[r, g, b]| Hsv::from(Srgb::new(*r, *g, *b))),
+        let iterations: Vec<_> = self
+            .layers
+            .iter()
+            .map(|l| l.iterations)
+            .enumerate()
+            .collect();
+
+        let mut data: Vec<&mut [u32]> = vec![];
+        for l in self.layers.iter_mut() {
+            data.push(&mut l.data[..]);
+        }
+
+        let mut histo = lib::Histogram::new(
+            self.area.x[0],
+            self.area.x[1],
+            self.dimensions.x,
+            self.area.y[0],
+            self.area.y[1],
+            self.dimensions.y,
+            data,
         );
 
-        let colors: Vec<_> = gradient.take(imax as usize + 1).collect();
-        d.data
-            .iter()
-            .map(move |&i| LinSrgb::from(colors[i as usize]))
-    })
-}
+        let mut pbar = ProgressBar::new(self.dimensions.size() as u64);
+        pbar.show_counter = false;
+        pbar.show_percent = false;
+        pbar.show_speed = false;
+        let msg = format!("{} iterations per pixel ", max_iter);
+        pbar.message(&msg);
 
-fn populate_cache(cache: &mut Cache) {
-    let max_iter = match cache.layers.iter().map(|l| l.iterations).max() {
-        Some(n) => n,
-        None => 0,
-    };
-
-    let iterations: Vec<_> = cache
-        .layers
-        .iter()
-        .map(|l| l.iterations)
-        .enumerate()
-        .collect();
-
-    let mut data: Vec<&mut [u32]> = vec![];
-    for l in cache.layers.iter_mut() {
-        data.push(&mut l.data[..]);
-    }
-
-    let mut histo = lib::Histogram::new(
-        cache.area.x[0],
-        cache.area.x[1],
-        cache.dimensions.x,
-        cache.area.y[0],
-        cache.area.y[1],
-        cache.dimensions.y,
-        data,
-    );
-
-    let mut pbar = ProgressBar::new(cache.dimensions.size() as u64);
-    pbar.show_counter = false;
-    pbar.show_percent = false;
-    pbar.show_speed = false;
-    let msg = format!("{} iterations per pixel ", max_iter);
-    pbar.message(&msg);
-
-    let centers: Vec<_> = histo.centers().collect();
-    for (x, y) in centers {
-        let c = Complex { re: x, im: y };
-        let nums: Vec<_> = lib::mandelbrot(c).take(max_iter).collect();
-        for (layer, maximum) in iterations.iter() {
-            if nums.len() < *maximum {
-                for z in nums.iter() {
-                    histo.fill(*layer, z.re, z.im);
+        let centers: Vec<_> = histo.centers().collect();
+        for (x, y) in centers {
+            let c = Complex { re: x, im: y };
+            let nums: Vec<_> = lib::mandelbrot(c).take(max_iter).collect();
+            for (layer, maximum) in iterations.iter() {
+                if nums.len() < *maximum {
+                    for z in nums.iter() {
+                        histo.fill(*layer, z.re, z.im);
+                    }
                 }
             }
+            pbar.inc();
         }
-        pbar.inc();
+
+        pbar.finish();
+
+        // FIXME needs to be cross checked!
+        self.valid = true;
     }
-
-    pbar.finish();
-
-    // FIXME needs to be cross checked!
-    cache.valid = true;
 }
 
 fn main() -> Result<(), io::Error> {
@@ -236,10 +210,10 @@ fn main() -> Result<(), io::Error> {
     let mut cache = Cache::load(&cache_filename, &config);
 
     if !cache.valid {
-        populate_cache(&mut cache);
+        cache.populate();
 
         let mut f = BufWriter::new(File::create(cache_filename).unwrap());
-        match serialize_into(&mut f, &cache) {
+        match bincode::serialize_into(&mut f, &cache) {
             Ok(r) => r,
             _ => {
                 println!("serialization error!");
@@ -247,26 +221,14 @@ fn main() -> Result<(), io::Error> {
         };
     }
 
-    let data: Vec<LinSrgb> = vec![LinSrgb::new(0.0, 0.0, 0.0); cache.dimensions.size()];
-
-    // for layer in config.layers {
-    //     let mapped: Vec<_> = histo.values().map(|i| (((*i as f64 + 1.0).ln() + 1.0).ln().powf(0.4) * 100.0) as usize).collect();
-    //     let imax = match mapped.iter().max() {
-    //         None => 0,
-    //         Some(x) => *x
-    //     };
-
-    // }
-
-    let temp: Vec<[u8; 3]> = data.iter().map(|c| c.into_format().into_raw()).collect();
-    let buffer: &[u8] = &temp.concat();
-    image::save_buffer(
-        cli.value_of("filename").unwrap(),
-        buffer,
-        config.dimensions.x as u32,
-        config.dimensions.y as u32,
-        image::RGB(8),
-    )
-    .unwrap();
+    let mut imgbuf: image::RgbImage = image::ImageBuffer::new(config.dimensions.x as u32, config.dimensions.y as u32);
+    let threshold: u32 = 5;
+    let maxvalue = cache.layers[0].data.iter().max().unwrap() - threshold;
+    for (x, y, pixel) in imgbuf.enumerate_pixels_mut() {
+        let idx = (x + y * config.dimensions.x as u32) as usize;
+        let v = (cmp::max(0, cmp::max(cache.layers[0].data[idx], threshold) - threshold) * 255 / maxvalue) as u8;
+        *pixel = image::Rgb([v, v, v]);
+    }
+    imgbuf.save(cli.value_of("filename").unwrap()).unwrap();
     Ok(())
 }
