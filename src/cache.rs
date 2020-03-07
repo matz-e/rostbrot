@@ -19,6 +19,7 @@ use std::sync::{Arc, Mutex};
 #[derive(Deserialize)]
 pub struct Layer {
     iterations: usize,
+    pub color: [u8; 3],
 }
 
 #[derive(Deserialize, Serialize)]

@@ -63,15 +63,22 @@ fn main() -> Result<(), io::Error> {
     let mut imgbuf: image::RgbImage =
         image::ImageBuffer::new(config.dimensions.x as u32, config.dimensions.y as u32);
     let threshold: u32 = 5;
-    let maxvalue = cache.layers[0].data.iter().max().unwrap() - threshold;
+    let maxvalues: Vec<u32> = cache.layers.iter().map(|l| l.data.iter().max().unwrap() - threshold).collect();
     for (x, y, pixel) in imgbuf.enumerate_pixels_mut() {
         let idx = (x + y * config.dimensions.x as u32) as usize;
-        let v = (cmp::max(
-            0,
-            cmp::max(cache.layers[0].data[idx], threshold) - threshold,
-        ) * 255
-            / maxvalue) as u8;
-        *pixel = image::Rgb([v, v, v]);
+        // let v = 0;
+        let mut color: [u8; 3] = [0, 0, 0];
+        for (i, maxvalue) in maxvalues.iter().enumerate() {
+            let v = (cmp::max(
+                0,
+                cmp::max(cache.layers[i].data[idx], threshold) - threshold,
+            ) * 255
+                / maxvalue) as u8;
+            for j in 0..3 {
+                color[j] = cmp::max(color[j], cmp::min(config.layers[i].color[j], v));
+            }
+        }
+        *pixel = image::Rgb(color);
     }
     imgbuf.save(cli.value_of("filename").unwrap()).unwrap();
     Ok(())
