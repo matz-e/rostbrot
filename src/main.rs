@@ -10,6 +10,7 @@ extern crate serde_derive;
 extern crate serde_yaml;
 
 use clap::{App, Arg};
+use lib::{mandelbrot, Histogram};
 use num_complex::Complex;
 use pbr::ProgressBar;
 use std::cmp;
@@ -21,7 +22,7 @@ mod lib;
 
 #[derive(Deserialize)]
 struct Layer {
-    iterations: usize
+    iterations: usize,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -49,7 +50,7 @@ struct Dimensions {
 }
 
 impl Dimensions {
-    fn size(&self) -> usize {
+    fn size(self) -> usize {
         self.x as usize * self.y as usize
     }
 }
@@ -138,7 +139,7 @@ impl Cache {
             data.push(&mut l.data[..]);
         }
 
-        let mut histo = lib::Histogram::new(
+        let mut histo = Histogram::new(
             self.area.x[0],
             self.area.x[1],
             self.dimensions.x,
@@ -158,7 +159,7 @@ impl Cache {
         let centers: Vec<_> = histo.centers().collect();
         for (x, y) in centers {
             let c = Complex { re: x, im: y };
-            let nums: Vec<_> = lib::mandelbrot(c).take(max_iter).collect();
+            let nums: Vec<_> = mandelbrot(c).take(max_iter).collect();
             for (layer, maximum) in iterations.iter() {
                 if nums.len() < *maximum {
                     for z in nums.iter() {
@@ -221,12 +222,17 @@ fn main() -> Result<(), io::Error> {
         };
     }
 
-    let mut imgbuf: image::RgbImage = image::ImageBuffer::new(config.dimensions.x as u32, config.dimensions.y as u32);
+    let mut imgbuf: image::RgbImage =
+        image::ImageBuffer::new(config.dimensions.x as u32, config.dimensions.y as u32);
     let threshold: u32 = 5;
     let maxvalue = cache.layers[0].data.iter().max().unwrap() - threshold;
     for (x, y, pixel) in imgbuf.enumerate_pixels_mut() {
         let idx = (x + y * config.dimensions.x as u32) as usize;
-        let v = (cmp::max(0, cmp::max(cache.layers[0].data[idx], threshold) - threshold) * 255 / maxvalue) as u8;
+        let v = (cmp::max(
+            0,
+            cmp::max(cache.layers[0].data[idx], threshold) - threshold,
+        ) * 255
+            / maxvalue) as u8;
         *pixel = image::Rgb([v, v, v]);
     }
     imgbuf.save(cli.value_of("filename").unwrap()).unwrap();
