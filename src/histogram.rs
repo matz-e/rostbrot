@@ -1,11 +1,8 @@
-extern crate num_complex;
 extern crate num_traits;
 
 use self::num_traits::cast;
 use self::num_traits::Float;
-use num_complex::Complex;
 use std::iter;
-// use std::ops::{Add, Div, Mul, Sub};
 
 struct Binning<T> {
     scale: T,
@@ -15,7 +12,7 @@ struct Binning<T> {
 
 impl<T> Binning<T>
 where
-    T: Float, // Add<Output=T> + Div<Output=T> + Mul<Output=T> + Sub<Output=T> + From<u32> + From<f32>
+    T: Float,
 {
     fn bin(&self, n: T) -> Option<u16> {
         match cast((n - self.min) * self.scale) {
@@ -90,43 +87,6 @@ where
     }
 }
 
-pub struct ComplexSequence<T> {
-    z: Complex<T>,
-    c: Complex<T>,
-    r: T,
-}
-
-impl<T> Iterator for ComplexSequence<T>
-where
-    T: Float,
-{
-    type Item = Complex<T>;
-
-    fn next(&mut self) -> Option<Complex<T>> {
-        self.z = self.z * self.z + self.c;
-        if self.z.norm() > self.r {
-            return None;
-        }
-        Some(self.z)
-    }
-}
-
-pub fn mandelbrot<T>(c: Complex<T>) -> ComplexSequence<T>
-where
-    T: Float,
-{
-    let start: T = T::from(0.0).unwrap();
-    let radius: T = T::from(2.0).unwrap();
-    ComplexSequence {
-        z: Complex {
-            re: start,
-            im: start,
-        },
-        c,
-        r: radius,
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -166,24 +126,5 @@ mod tests {
         histo.fill(0, 0.51, 0.1);
         assert_eq!(values[0], 0 as u32);
         assert_eq!(values[1], 1 as u32);
-    }
-
-    #[test]
-    fn mandelbrot_seq() {
-        let c = Complex { re: 0.0, im: 0.0 };
-
-        let s = mandelbrot(c);
-        let res: Vec<_> = s.take(20).collect();
-        assert_eq!(res.len(), 20);
-
-        let c = Complex { re: 3.0, im: 0.0 };
-        let s = mandelbrot(c);
-        let res: Vec<_> = s.take(20).collect();
-        assert_eq!(res.len(), 0);
-
-        let c = Complex { re: 1.0, im: 0.0 };
-        let s = mandelbrot(c);
-        let res: Vec<_> = s.take(20).collect();
-        assert_eq!(res, vec![c, Complex { re: 2.0, im: 0.0 }]);
     }
 }
