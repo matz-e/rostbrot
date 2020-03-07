@@ -1,6 +1,7 @@
 extern crate bincode;
 extern crate num_complex;
 extern crate pbr;
+extern crate rayon;
 
 #[path = "histogram.rs"]
 mod histogram;
@@ -11,7 +12,9 @@ use self::histogram::Histogram;
 use self::mandelbrot::mandelbrot;
 use self::num_complex::Complex;
 use self::pbr::ProgressBar;
+use self::rayon::prelude::*;
 use std::fs::File;
+use std::sync::{Arc, Mutex};
 
 #[derive(Deserialize)]
 pub struct Layer {
@@ -132,7 +135,7 @@ impl Cache {
             data.push(&mut l.data[..]);
         }
 
-        let mut histo = Histogram::new(
+        let histo = Histogram::new(
             self.area.x[0],
             self.area.x[1],
             self.dimensions.x,
@@ -150,20 +153,25 @@ impl Cache {
         pbar.message(&msg);
 
         let centers: Vec<_> = histo.centers().collect();
-        for (x, y) in centers {
+        let histp = Arc::new(Mutex::new(histo));
+        let pbarp = Arc::new(Mutex::new(pbar));
+
+        centers.par_iter().for_each(|&(x, y)| {
+            // for (x, y) in centers {
             let c = Complex { re: x, im: y };
             let nums: Vec<_> = mandelbrot(c).take(max_iter).collect();
+            let mut hist = histp.lock().unwrap();
             for (layer, maximum) in iterations.iter() {
                 if nums.len() < *maximum {
                     for z in nums.iter() {
-                        histo.fill(*layer, z.re, z.im);
+                        hist.fill(*layer, z.re, z.im);
                     }
                 }
             }
-            pbar.inc();
-        }
+            pbarp.lock().unwrap().inc();
+        });
 
-        pbar.finish();
+        pbarp.lock().unwrap().finish();
 
         // FIXME needs to be cross checked!
         self.valid = true;
