@@ -1,15 +1,15 @@
 dimensions:
-  x: 4000
-  y: 4000
+  x: 8000
+  y: 8000
 
 area:
-  x: [-1.7, 0.8]
-  y: [-1.125, 1.125]
+  x: [-1.7, 1.1]
+  y: [-1.4, 1.4]
 
 layers:
-  - iterations: 5000
-    color: [255, 100, 100]
-  - iterations: 500
+  - iterations: 10000
+    color: [255, 150, 150]
+  - iterations: 1000
     color: [0, 255, 0]
-  - iterations: 100
+  - iterations: 200
     color: [0, 0, 255]
