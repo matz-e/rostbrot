@@ -15,6 +15,7 @@ use std::f32;
 use std::fs::File;
 use std::io;
 use std::io::BufWriter;
+use std::path::Path;
 
 mod cache;
 
@@ -27,7 +28,7 @@ fn main() -> Result<(), io::Error> {
             Arg::with_name("cache")
                 .takes_value(true)
                 .long("cache")
-                .help("A cache file to use; default: 'cache.yaml'"),
+                .help("A cache file to use; default: value of 'config' with extension 'cache'"),
         )
         .arg(
             Arg::with_name("config")
@@ -45,10 +46,13 @@ fn main() -> Result<(), io::Error> {
         )
         .get_matches();
 
-    let config_file = File::open(cli.value_of("config").unwrap()).unwrap();
+    let config_filename = cli.value_of("config").unwrap();
+    let config_filestub = Path::new(config_filename).file_stem().unwrap();
+    let config_file = File::open(config_filename).unwrap();
     let config: Configuration = serde_yaml::from_reader(config_file).unwrap();
 
-    let cache_filename = cli.value_of("cache").unwrap_or("cache.yaml");
+    let cache_filename_default = format!("{}.cache", config_filestub.to_str().unwrap());
+    let cache_filename = cli.value_of("self").unwrap_or(&cache_filename_default);
     let mut cache = Cache::load(&cache_filename, &config);
 
     if !cache.valid {
