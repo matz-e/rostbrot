@@ -66,7 +66,7 @@ fn main() -> Result<(), io::Error> {
     let mut imgbuf: image::RgbImage =
         image::ImageBuffer::new(config.dimensions.x as u32, config.dimensions.y as u32);
 
-    let threshold = 5 as f32;
+    let threshold = 5_f32;
     let luts: Vec<Vec<u8>> = cache
         .layers
         .iter()
@@ -94,8 +94,8 @@ fn main() -> Result<(), io::Error> {
             let mut color: [u8; 3] = [0, 0, 0];
             for (i, lut) in luts.iter().enumerate() {
                 let v = lut[cache.layers[i].data[idx] as usize];
-                for j in 0..color.len() {
-                    color[j] = cmp::max(color[j], cmp::min(config.layers[i].color[j], v));
+                for (j, col) in color.iter_mut().enumerate() {
+                    *col = cmp::max(*col, cmp::min(config.layers[i].color[j], v));
                 }
             }
             *pixel = image::Rgb(color);

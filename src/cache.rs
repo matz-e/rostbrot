@@ -124,28 +124,26 @@ impl Cache {
             None => 0,
         };
 
-        let iterations: Vec<_> = self
-            .layers
-            .iter()
-            .map(|l| l.iterations)
-            .collect();
+        let iterations: Vec<_> = self.layers.iter().map(|l| l.iterations).collect();
 
         let area = self.area;
         let dimensions = self.dimensions;
 
-        let histos: Vec<_> = self.layers.iter_mut().map(|layer| {
-            Arc::new(Mutex::new(
-                    Histogram::new(
-                        area.x[0],
-                        area.x[1],
-                        dimensions.x,
-                        area.y[0],
-                        area.y[1],
-                        dimensions.y,
-                        &mut layer.data[..],
-                    )
-            ))}
-        ).collect();
+        let histos: Vec<_> = self
+            .layers
+            .iter_mut()
+            .map(|layer| {
+                Arc::new(Mutex::new(Histogram::new(
+                    area.x[0],
+                    area.x[1],
+                    dimensions.x,
+                    area.y[0],
+                    area.y[1],
+                    dimensions.y,
+                    &mut layer.data[..],
+                )))
+            })
+            .collect();
 
         let mut pbar = ProgressBar::new(self.dimensions.size() as u64);
         pbar.show_counter = false;
