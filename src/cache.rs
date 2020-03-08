@@ -128,23 +128,24 @@ impl Cache {
             .layers
             .iter()
             .map(|l| l.iterations)
-            .enumerate()
             .collect();
 
-        let mut data: Vec<&mut [u32]> = vec![];
-        for l in self.layers.iter_mut() {
-            data.push(&mut l.data[..]);
-        }
+        let area = self.area;
+        let dimensions = self.dimensions;
 
-        let histo = Histogram::new(
-            self.area.x[0],
-            self.area.x[1],
-            self.dimensions.x,
-            self.area.y[0],
-            self.area.y[1],
-            self.dimensions.y,
-            data,
-        );
+        let histos: Vec<_> = self.layers.iter_mut().map(|layer| {
+            Arc::new(Mutex::new(
+                    Histogram::new(
+                        area.x[0],
+                        area.x[1],
+                        dimensions.x,
+                        area.y[0],
+                        area.y[1],
+                        dimensions.y,
+                        &mut layer.data[..],
+                    )
+            ))}
+        ).collect();
 
         let mut pbar = ProgressBar::new(self.dimensions.size() as u64);
         pbar.show_counter = false;
@@ -153,19 +154,18 @@ impl Cache {
         let msg = format!("{} iterations per pixel ", max_iter);
         pbar.message(&msg);
 
-        let centers: Vec<_> = histo.centers().collect();
-        let histp = Arc::new(Mutex::new(histo));
+        let centers: Vec<_> = histos[0].lock().unwrap().centers().collect();
         let pbarp = Arc::new(Mutex::new(pbar));
 
         centers.par_iter().for_each(|&(x, y)| {
             // for (x, y) in centers {
             let c = Complex { re: x, im: y };
             let nums: Vec<_> = mandelbrot(c).take(max_iter).collect();
-            let mut hist = histp.lock().unwrap();
-            for (layer, maximum) in iterations.iter() {
+            for (mutex, maximum) in histos.iter().zip(iterations.iter()) {
                 if nums.len() < *maximum {
+                    let mut hist = mutex.lock().unwrap();
                     for z in nums.iter() {
-                        hist.fill(*layer, z.re, z.im);
+                        hist.fill(z.re, z.im);
                     }
                 }
             }

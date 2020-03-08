@@ -37,7 +37,7 @@ where
 pub struct Histogram<'a, T> {
     xaxis: Binning<T>,
     yaxis: Binning<T>,
-    bins: Vec<&'a mut [u32]>,
+    bins: &'a mut [u32],
 }
 
 impl<'a, T> Histogram<'a, T>
@@ -54,14 +54,14 @@ where
             .flat_map(move |y| self.xaxis.iter().zip(iter::repeat(y)))
     }
 
-    pub fn fill(&mut self, i: usize, x: T, y: T) {
+    pub fn fill(&mut self, x: T, y: T) {
         let nx = self.xaxis.bin(x);
         let ny = self.yaxis.bin(y);
         if nx.is_none() || ny.is_none() {
             return;
         }
         let idx = self.index(nx.unwrap() as usize, ny.unwrap() as usize);
-        self.bins[i][idx] += 1;
+        self.bins[idx] += 1;
     }
 
     pub fn new(
@@ -71,7 +71,7 @@ where
         ymin: T,
         ymax: T,
         ynum: u16,
-        bins: Vec<&'a mut [u32]>,
+        bins: &'a mut [u32],
     ) -> Histogram<'a, T> {
         let xaxis = Binning {
             scale: T::from(xnum).unwrap() / (xmax - xmin),
@@ -117,14 +117,13 @@ mod tests {
 
     #[test]
     fn histogram_usage() {
-        let values = &mut [0, 0];
-        let data: Vec<&mut [u32]> = vec![values];
+        let data = &mut [0, 0];
         let mut histo = Histogram::new(0.0, 1.0, 2, 0.0, 1.0, 1, data);
         let centers: Vec<_> = histo.centers().collect();
         assert_eq!(centers, vec![(0.25, 0.5), (0.75, 0.5)]);
-        histo.fill(0, -2.0, 3.0);
-        histo.fill(0, 0.51, 0.1);
-        assert_eq!(values[0], 0 as u32);
-        assert_eq!(values[1], 1 as u32);
+        histo.fill(-2.0, 3.0);
+        histo.fill(0.51, 0.1);
+        assert_eq!(data[0], 0_u32);
+        assert_eq!(data[1], 1_u32);
     }
 }
