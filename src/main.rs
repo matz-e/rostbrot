@@ -75,13 +75,15 @@ fn main() -> Result<(), io::Error> {
             (0..=*m)
                 .into_par_iter()
                 .map(|i| {
-                    let frac = (i as f32 - threshold).max(0.0) / (*m as f32 - threshold).max(0.0);
-                    let mapped = (frac / (1.0 - frac)).atan() / f32::consts::FRAC_PI_2;
+                    let upper = (*m as f32 - threshold).max(1.0).log2();
+                    let value = (i as f32 - threshold).max(1.0).log2();
+                    let mapped = (upper / value).sqrt();
                     (mapped * 255.0) as u8
                 })
                 .collect()
         })
         .collect();
+
     imgbuf
         .enumerate_pixels_mut()
         .par_bridge()
