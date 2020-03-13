@@ -154,25 +154,26 @@ impl Cache {
 
         let centers: Vec<_> = histos[0].lock().unwrap().centers().collect();
         let pbarp = Arc::new(Mutex::new(pbar));
+        let batchsize = 1000;
 
-        centers.par_iter().for_each(|&(x, y)| {
-            // for (x, y) in centers {
-            let c = Complex { re: x, im: y };
-            let nums: Vec<_> = mandelbrot(c).take(max_iter).collect();
-            for (mutex, maximum) in histos.iter().zip(iterations.iter()) {
-                if nums.len() < *maximum {
-                    let mut hist = mutex.lock().unwrap();
-                    for z in nums.iter() {
-                        hist.fill(z.re, z.im);
+        centers.par_chunks(batchsize).for_each(|chunk| {
+            for &(x, y) in chunk {
+                let c = Complex { re: x, im: y };
+                let nums: Vec<_> = mandelbrot(c).take(max_iter).collect();
+                for (mutex, maximum) in histos.iter().zip(iterations.iter()) {
+                    if nums.len() < *maximum {
+                        let mut hist = mutex.lock().unwrap();
+                        for z in nums.iter() {
+                            hist.fill(z.re, z.im);
+                        }
                     }
                 }
             }
-            pbarp.lock().unwrap().inc();
+            pbarp.lock().unwrap().add(batchsize as u64);
         });
 
         pbarp.lock().unwrap().finish();
 
-        // FIXME needs to be cross checked!
         self.valid = true;
     }
 }
