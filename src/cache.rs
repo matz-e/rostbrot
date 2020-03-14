@@ -14,6 +14,7 @@ use self::num_complex::Complex;
 use self::pbr::ProgressBar;
 use self::rayon::prelude::*;
 use std::fs::File;
+use std::io::BufReader;
 use std::sync::{Arc, Mutex};
 
 #[derive(Deserialize)]
@@ -106,7 +107,8 @@ impl Cache {
             Ok(f) => f,
             _ => return Cache::new(config),
         };
-        match bincode::deserialize_from(file) {
+        let buf_reader = BufReader::new(file);
+        match bincode::deserialize_from(buf_reader) {
             Ok(c) => {
                 if c == *config {
                     c
