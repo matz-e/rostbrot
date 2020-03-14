@@ -18,7 +18,7 @@ where
 
     fn next(&mut self) -> Option<Complex<T>> {
         self.z = self.z * self.z + self.c;
-        if self.z.norm() > self.r {
+        if self.z.norm_sqr() > self.r * self.r {
             return None;
         }
         Some(self.z)
