@@ -17,13 +17,13 @@ use std::fs::File;
 use std::io::BufReader;
 use std::sync::{Arc, Mutex};
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct Layer {
     iterations: usize,
     pub color: [u8; 3],
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct LayerData {
     iterations: usize,
     pub data: Vec<u32>,
@@ -177,5 +177,25 @@ impl Cache {
         pbarp.lock().unwrap().finish();
 
         self.valid = true;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn layer_equality() {
+        let ld = LayerData { iterations: 10, data: vec![] };
+        let l = Layer { iterations: 10, color: [0, 0, 0] };
+        assert_eq!(ld, l);
+        let l2 = Layer { iterations: 1, color: [0, 0, 0] };
+        assert_ne!(ld, l2);
+    }
+
+    #[test]
+    fn dimensionality() {
+        let d = Dimensions { x: 5, y: 4 };
+        assert_eq!(d.size(), 20);
     }
 }
