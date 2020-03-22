@@ -12,9 +12,7 @@ use clap::{App, Arg};
 use rayon::prelude::*;
 use std::cmp;
 use std::f32;
-use std::fs::File;
 use std::io;
-use std::io::BufWriter;
 use std::path::Path;
 
 mod cache;
@@ -48,8 +46,7 @@ fn main() -> Result<(), io::Error> {
 
     let config_filename = cli.value_of("config").unwrap();
     let config_filestub = Path::new(config_filename).file_stem().unwrap();
-    let config_file = File::open(config_filename).unwrap();
-    let config: Configuration = serde_yaml::from_reader(config_file).unwrap();
+    let config = Configuration::load(config_filename).unwrap();
 
     let cache_filename_default = format!("{}.cache", config_filestub.to_str().unwrap());
     let cache_filename = cli.value_of("self").unwrap_or(&cache_filename_default);
@@ -57,14 +54,7 @@ fn main() -> Result<(), io::Error> {
 
     if !cache.valid {
         cache.populate();
-
-        let mut f = BufWriter::new(File::create(cache_filename).unwrap());
-        match bincode::serialize_into(&mut f, &cache) {
-            Ok(r) => r,
-            _ => {
-                println!("serialization error!");
-            }
-        };
+        cache.dump(cache_filename).unwrap();
     }
 
     let mut imgbuf: image::RgbImage =

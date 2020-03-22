@@ -3,6 +3,9 @@ extern crate num_complex;
 extern crate pbr;
 extern crate rayon;
 
+#[cfg(test)]
+extern crate tempfile;
+
 #[path = "histogram.rs"]
 mod histogram;
 #[path = "mandelbrot.rs"]
@@ -13,8 +16,10 @@ use self::mandelbrot::mandelbrot;
 use self::num_complex::Complex;
 use self::pbr::ProgressBar;
 use self::rayon::prelude::*;
+use std::error::Error;
 use std::fs::File;
 use std::io::BufReader;
+use std::io::BufWriter;
 use std::sync::{Arc, Mutex};
 
 #[derive(Debug, Deserialize)]
@@ -23,7 +28,7 @@ pub struct Layer {
     pub color: [u8; 3],
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, PartialEq)]
 pub struct LayerData {
     iterations: usize,
     pub data: Vec<u32>,
@@ -35,13 +40,13 @@ impl PartialEq<Layer> for LayerData {
     }
 }
 
-#[derive(Clone, Copy, Deserialize, Serialize, PartialEq)]
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq)]
 pub struct Area {
     x: [f32; 2],
     y: [f32; 2],
 }
 
-#[derive(Clone, Copy, Deserialize, Serialize, PartialEq)]
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq)]
 pub struct Dimensions {
     pub x: u16,
     pub y: u16,
@@ -60,7 +65,7 @@ pub struct Configuration {
     pub layers: Vec<Layer>,
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, PartialEq)]
 pub struct Cache {
     area: Area,
     dimensions: Dimensions,
@@ -82,6 +87,14 @@ impl PartialEq<Configuration> for Cache {
             }
         }
         true
+    }
+}
+
+impl Configuration {
+    pub fn load(filename: &str) -> Result<Configuration, Box<dyn Error>> {
+        let file = File::open(filename)?;
+        let config = serde_yaml::from_reader(file)?;
+        Ok(config)
     }
 }
 
@@ -118,6 +131,12 @@ impl Cache {
             }
             _ => Cache::new(config),
         }
+    }
+
+    pub fn dump(&self, filename: &str) -> Result<(), Box<dyn Error>> {
+        let mut f = BufWriter::new(File::create(filename)?);
+        bincode::serialize_into(&mut f, &self)?;
+        Ok(())
     }
 
     pub fn populate(&mut self) {
@@ -182,6 +201,8 @@ impl Cache {
 
 #[cfg(test)]
 mod tests {
+    use self::tempfile::{tempdir,TempDir};
+    use std::io::Write;
     use super::*;
 
     #[test]
@@ -197,5 +218,71 @@ mod tests {
     fn dimensionality() {
         let d = Dimensions { x: 5, y: 4 };
         assert_eq!(d.size(), 20);
+    }
+
+    fn dump_config(dir: &TempDir) -> Configuration {
+        let path = dir.path().join("config.yaml");
+        let filename = path.to_str().unwrap();
+        {
+            let mut file = File::create(filename).unwrap();
+            writeln!(file, r#"
+                dimensions:
+                  x: 10
+                  y: 5
+
+                area:
+                  x: [-2, 2]
+                  y: [-1, 1]
+
+                layers:
+                  - iterations: 10
+                    color: [100, 100, 100]
+                  - iterations: 1
+                    color: [10, 10, 10]
+            "#).unwrap();
+        }
+        Configuration::load(filename).unwrap()
+    }
+
+    #[test]
+    fn load_config() {
+        let dir = tempdir().unwrap();
+        let config = dump_config(&dir);
+        assert_eq!(config.dimensions.x, 10);
+        assert_eq!(config.area.x[1], 2.0);
+        assert_eq!(config.layers[0].iterations, 10);
+    }
+
+    #[test]
+    fn restore_cache() {
+        let dir = tempdir().unwrap();
+        let config = dump_config(&dir);
+        let cache = Cache::new(&config);
+        assert_eq!(cache.valid, false);
+        assert_eq!(cache.layers.len(), 2);
+        {
+            let path = dir.path().join("cache.bin");
+            let filename = path.to_str().unwrap();
+            cache.dump(filename).unwrap();
+            let restored = Cache::load(filename, &config);
+            assert_eq!(cache, restored);
+        }
+    }
+
+    #[test]
+    fn restore_modified_cache() {
+        let dir = tempdir().unwrap();
+        let mut config = dump_config(&dir);
+        let mut cache = Cache::new(&config);
+        {
+            let path = dir.path().join("cache.bin");
+            let filename = path.to_str().unwrap();
+            cache.valid = true;
+            cache.dump(filename).unwrap();
+            config.layers[0].iterations = 100;
+            let restored = Cache::load(filename, &config);
+            assert_eq!(restored.valid, false);
+            assert_ne!(restored, cache);
+        }
     }
 }
