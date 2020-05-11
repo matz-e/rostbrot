@@ -7,9 +7,9 @@ area:
   y: [-1.4, 1.4]
 
 layers:
-  - iterations: 10000
-    color: [255, 150, 150]
-  - iterations: 1000
+  - iterations: 20000
+    color: [255, 100, 100]
+  - iterations: 2000
     color: [0, 255, 0]
-  - iterations: 200
+  - iterations: 500
     color: [0, 0, 255]
