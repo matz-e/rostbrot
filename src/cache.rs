@@ -285,4 +285,21 @@ mod tests {
             assert_ne!(restored, cache);
         }
     }
+
+    #[test]
+    fn restore_modified_config() {
+        let dir = tempdir().unwrap();
+        let mut config = dump_config(&dir);
+        let mut cache = Cache::new(&config);
+        {
+            let path = dir.path().join("cache.bin");
+            let filename = path.to_str().unwrap();
+            cache.valid = true;
+            cache.dump(filename).unwrap();
+            config.layers[0].iterations = 100;
+            let restored = Cache::load(filename, &config);
+            assert_eq!(restored.valid, false);
+            assert_ne!(restored, cache);
+        }
+    }
 }
