@@ -60,18 +60,18 @@ fn main() -> Result<(), io::Error> {
     let mut imgbuf: image::RgbImage =
         image::ImageBuffer::new(config.dimensions.x as u32, config.dimensions.y as u32);
 
-    let threshold = 5_f32;
+    let threshold = 5.0f32;
     let luts: Vec<Vec<u8>> = cache
         .layers
         .iter()
-        .map(|l| l.data.iter().max().unwrap())
-        .map(|m| {
+        .map(|l| {
+            let m = l.data.iter().max().unwrap();
             (0..=*m)
                 .into_par_iter()
                 .map(|i| {
                     let upper = (*m as f32 - threshold).max(1.0).log2();
                     let value = (i as f32 - threshold).max(1.0).log2();
-                    let mapped = (upper / value).sqrt();
+                    let mapped = (value / upper).sqrt();
                     (mapped * 255.0) as u8
                 })
                 .collect()
