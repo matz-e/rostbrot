@@ -1,18 +1,12 @@
 extern crate clap;
+extern crate rostbrot;
 
-extern crate serde;
-#[macro_use]
-extern crate serde_derive;
-extern crate serde_yaml;
+use rostbrot::cache::{Cache, Configuration};
+use rostbrot::color::colorize;
 
-use cache::{Cache, Configuration};
-use color::colorize;
 use clap::{App, Arg};
 use std::error::Error;
 use std::path::Path;
-
-mod cache;
-mod color;
 
 fn main() -> Result<(), Box<dyn Error>> {
     let cli = App::new("Rostbrot")

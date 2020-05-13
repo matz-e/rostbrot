@@ -5,13 +5,17 @@ extern crate rayon;
 mod cache;
 
 use self::rayon::prelude::*;
-use std::error::Error;
 use std::cmp;
+use std::error::Error;
 use std::f32;
 
 use cache::{Cache, Configuration};
 
-pub fn colorize(cache: &Cache, config: &Configuration, filename: &str) -> Result<(), Box<dyn Error>> {
+pub fn colorize(
+    cache: &Cache,
+    config: &Configuration,
+    filename: &str,
+) -> Result<(), Box<dyn Error>> {
     let mut imgbuf: image::RgbImage =
         image::ImageBuffer::new(config.dimensions.x as u32, config.dimensions.y as u32);
 

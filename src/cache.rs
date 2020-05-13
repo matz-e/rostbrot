@@ -201,16 +201,25 @@ impl Cache {
 
 #[cfg(test)]
 mod tests {
-    use self::tempfile::{tempdir,TempDir};
-    use std::io::Write;
+    use self::tempfile::{tempdir, TempDir};
     use super::*;
+    use std::io::Write;
 
     #[test]
     fn layer_equality() {
-        let ld = LayerData { iterations: 10, data: vec![] };
-        let l = Layer { iterations: 10, color: [0, 0, 0] };
+        let ld = LayerData {
+            iterations: 10,
+            data: vec![],
+        };
+        let l = Layer {
+            iterations: 10,
+            color: [0, 0, 0],
+        };
         assert_eq!(ld, l);
-        let l2 = Layer { iterations: 1, color: [0, 0, 0] };
+        let l2 = Layer {
+            iterations: 1,
+            color: [0, 0, 0],
+        };
         assert_ne!(ld, l2);
     }
 
@@ -225,7 +234,9 @@ mod tests {
         let filename = path.to_str().unwrap();
         {
             let mut file = File::create(filename).unwrap();
-            writeln!(file, r#"
+            writeln!(
+                file,
+                r#"
                 dimensions:
                   x: 10
                   y: 5
@@ -239,7 +250,9 @@ mod tests {
                     color: [100, 100, 100]
                   - iterations: 1
                     color: [10, 10, 10]
-            "#).unwrap();
+            "#
+            )
+            .unwrap();
         }
         Configuration::load(filename).unwrap()
     }
