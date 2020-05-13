@@ -38,6 +38,21 @@ where
     mu1.norm_sqr() < T::from(1.0).unwrap() || mu2.norm_sqr() < T::from(1.0).unwrap()
 }
 
+/// Test if the given point is in the first bulb of the Mandelbrot set
+///
+/// I.e., within a circle of radius 1/4 of (-1, 0).
+pub fn first_bulb<T>(c: Complex<T>) -> bool
+where
+    T: Float,
+{
+    let center = Complex {
+        re: T::from(-1.0).unwrap(),
+        im: T::from(0.0).unwrap(),
+    };
+
+    (c - center).norm_sqr() < T::from(0.0625).unwrap()
+}
+
 pub fn mandelbrot<T>(c: Complex<T>) -> ComplexSequence<T>
 where
     T: Float,
@@ -87,5 +102,20 @@ mod tests {
 
         let c = Complex { re: -0.74, im: 0.0 };
         assert!(cardioid(c));
+    }
+
+    #[test]
+    fn first_bulb_test() {
+        let c = Complex { re: 0.0, im: 0.0 };
+        assert!(!first_bulb(c));
+
+        let c = Complex { re: -1.24, im: 0.0 };
+        assert!(first_bulb(c));
+
+        let c = Complex { re: -0.76, im: 0.0 };
+        assert!(first_bulb(c));
+
+        let c = Complex { re: -1.0, im: 0.24 };
+        assert!(first_bulb(c));
     }
 }

@@ -6,7 +6,7 @@ extern crate num_complex;
 extern crate rostbrot;
 
 use rostbrot::cache::{Cache, Configuration};
-use rostbrot::mandelbrot::cardioid;
+use rostbrot::mandelbrot::{cardioid, first_bulb};
 
 use clap::{App, Arg};
 use num_complex::Complex;
@@ -63,7 +63,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 * (config.area.y[1] - config.area.y[0])
                 + config.area.y[0];
             let c = Complex { re, im };
-            if cardioid(c) {
+            if cardioid(c) || first_bulb(c) {
                 *pixel = image::Rgb([0, 0, 0]);
             } else {
                 *pixel = image::Rgb([200, 200, 200]);

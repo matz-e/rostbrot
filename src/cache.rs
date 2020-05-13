@@ -12,7 +12,7 @@ mod histogram;
 mod mandelbrot;
 
 use self::histogram::Histogram;
-use self::mandelbrot::{cardioid, mandelbrot};
+use self::mandelbrot::{cardioid, first_bulb, mandelbrot};
 use self::num_complex::Complex;
 use self::pbr::ProgressBar;
 use self::rayon::prelude::*;
@@ -180,7 +180,7 @@ impl Cache {
         centers.par_chunks(batchsize).for_each(|chunk| {
             for &(x, y) in chunk {
                 let c = Complex { re: x, im: y };
-                if cardioid(c) {
+                if cardioid(c) || first_bulb(c) {
                     continue;
                 }
                 let nums: Vec<_> = mandelbrot(c).take(max_iter).collect();
