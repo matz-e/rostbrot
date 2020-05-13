@@ -25,6 +25,19 @@ where
     }
 }
 
+pub fn cardioid<T>(c: Complex<T>) -> bool
+where
+    T: Float,
+{
+    let one = Complex {
+        re: T::from(1.0).unwrap(),
+        im: T::from(0.0).unwrap(),
+    };
+    let mu1 = one + (one - c * T::from(4.0).unwrap()).sqrt();
+    let mu2 = one - (one - c * T::from(4.0).unwrap()).sqrt();
+    mu1.norm_sqr() < T::from(1.0).unwrap() || mu2.norm_sqr() < T::from(1.0).unwrap()
+}
+
 pub fn mandelbrot<T>(c: Complex<T>) -> ComplexSequence<T>
 where
     T: Float,
@@ -62,5 +75,17 @@ mod tests {
         let s = mandelbrot(c);
         let res: Vec<_> = s.take(20).collect();
         assert_eq!(res, vec![c, Complex { re: 2.0, im: 0.0 }]);
+    }
+
+    #[test]
+    fn cardioid_test() {
+        let c = Complex { re: 1.0, im: 0.0 };
+        assert!(!cardioid(c));
+
+        let c = Complex { re: 0.0, im: 0.0 };
+        assert!(cardioid(c));
+
+        let c = Complex { re: -0.74, im: 0.0 };
+        assert!(cardioid(c));
     }
 }

@@ -5,3 +5,4 @@ extern crate serde_yaml;
 
 pub mod cache;
 pub mod color;
+pub mod mandelbrot;

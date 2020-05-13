@@ -2,6 +2,7 @@
 name = "rostbrot"
 version = "0.1.0"
 authors = ["Matthias Wolf <m@sushinara.net>"]
+default-run = "rostbrot"
 
 [dependencies]
 bincode = "*"

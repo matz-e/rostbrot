@@ -12,7 +12,7 @@ mod histogram;
 mod mandelbrot;
 
 use self::histogram::Histogram;
-use self::mandelbrot::mandelbrot;
+use self::mandelbrot::{cardioid, mandelbrot};
 use self::num_complex::Complex;
 use self::pbr::ProgressBar;
 use self::rayon::prelude::*;
@@ -42,8 +42,8 @@ impl PartialEq<Layer> for LayerData {
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq)]
 pub struct Area {
-    x: [f32; 2],
-    y: [f32; 2],
+    pub x: [f32; 2],
+    pub y: [f32; 2],
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq)]
@@ -60,7 +60,7 @@ impl Dimensions {
 
 #[derive(Deserialize)]
 pub struct Configuration {
-    area: Area,
+    pub area: Area,
     pub dimensions: Dimensions,
     pub layers: Vec<Layer>,
 }
@@ -180,6 +180,9 @@ impl Cache {
         centers.par_chunks(batchsize).for_each(|chunk| {
             for &(x, y) in chunk {
                 let c = Complex { re: x, im: y };
+                if cardioid(c) {
+                    continue;
+                }
                 let nums: Vec<_> = mandelbrot(c).take(max_iter).collect();
                 for (mutex, maximum) in histos.iter().zip(iterations.iter()) {
                     if nums.len() < *maximum {
