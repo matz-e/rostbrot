@@ -30,7 +30,13 @@ pub fn colorize(
                 .map(|i| {
                     let upper = (*m as f32 - threshold).max(1.0).log2();
                     let value = (i as f32 - threshold).max(1.0).log2();
-                    let mapped = (value / upper).sqrt();
+                    let mapped = if config.colorization.exponent == 1.0 {
+                        value / upper
+                    } else if config.colorization.exponent == 0.5 {
+                        (value / upper).sqrt()
+                    } else {
+                        (value / upper).powf(config.colorization.exponent)
+                    };
                     (mapped * 255.0) as u8
                 })
                 .collect()

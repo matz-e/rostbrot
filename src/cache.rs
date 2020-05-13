@@ -61,8 +61,14 @@ impl Dimensions {
 #[derive(Deserialize)]
 pub struct Configuration {
     pub area: Area,
+    pub colorization: Color,
     pub dimensions: Dimensions,
     pub layers: Vec<Layer>,
+}
+
+#[derive(Debug, Deserialize, Serialize, PartialEq)]
+pub struct Color {
+    pub exponent: f32,
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
