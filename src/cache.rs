@@ -25,25 +25,29 @@ use std::sync::{Arc, Mutex};
 #[derive(Debug, Deserialize)]
 pub struct Layer {
     iterations: usize,
+    #[serde(default)]
+    threshold: usize,
     pub color: [u8; 3],
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
 pub struct LayerData {
     iterations: usize,
+    threshold: usize,
     pub data: Vec<u32>,
 }
 
 impl PartialEq<Layer> for LayerData {
     fn eq(&self, other: &Layer) -> bool {
-        self.iterations == other.iterations
+        self.iterations == other.iterations &&
+            self.threshold == other.threshold
     }
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq)]
 pub struct Area {
-    pub x: [f32; 2],
-    pub y: [f32; 2],
+    pub x: [f64; 2],
+    pub y: [f64; 2],
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq)]
@@ -114,6 +118,7 @@ impl Cache {
                 .iter()
                 .map(|l| LayerData {
                     iterations: l.iterations,
+                    threshold: l.threshold,
                     data: vec![0; c.dimensions.size()],
                 })
                 .collect(),
@@ -151,7 +156,7 @@ impl Cache {
             None => 0,
         };
 
-        let iterations: Vec<_> = self.layers.iter().map(|l| l.iterations).collect();
+        let ranges: Vec<_> = self.layers.iter().map(|l| (l.iterations, l.threshold)).collect();
 
         let area = self.area;
         let dimensions = self.dimensions;
@@ -190,8 +195,8 @@ impl Cache {
                     continue;
                 }
                 let nums: Vec<_> = mandelbrot(c).take(max_iter).collect();
-                for (mutex, maximum) in histos.iter().zip(iterations.iter()) {
-                    if nums.len() < *maximum {
+                for (mutex, (maximum, minimum)) in histos.iter().zip(ranges.iter()) {
+                    if *minimum <= nums.len() && nums.len() < *maximum {
                         let mut hist = mutex.lock().unwrap();
                         for z in nums.iter() {
                             hist.fill(z.re, z.im);
