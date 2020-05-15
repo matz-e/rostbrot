@@ -1,4 +1,6 @@
 extern crate clap;
+#[macro_use]
+extern crate log;
 extern crate rostbrot;
 
 use rostbrot::cache::{Cache, Configuration};
@@ -9,6 +11,10 @@ use std::error::Error;
 use std::path::Path;
 
 fn main() -> Result<(), Box<dyn Error>> {
+    env_logger::builder()
+        .format_timestamp(None)
+        .init();
+
     let cli = App::new("Rostbrot")
         .version("0.1.0")
         .author("Matthias Wolf <m@sushinara.net>")
@@ -44,6 +50,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut cache = Cache::load(&cache_filename, &config);
 
     if !cache.valid {
+        info!("recreating cache");
         cache.populate();
         cache.dump(cache_filename).unwrap();
     }

@@ -1,8 +1,5 @@
-extern crate num_complex;
-extern crate num_traits;
-
-use self::num_complex::Complex;
-use self::num_traits::Float;
+use num_complex::Complex;
+use num_traits::Float;
 
 pub struct ComplexSequence<T> {
     z: Complex<T>,

@@ -1,7 +1,5 @@
-extern crate num_traits;
-
-use self::num_traits::cast;
-use self::num_traits::Float;
+use num_traits::cast;
+use num_traits::Float;
 use std::iter;
 
 struct Binning<T> {

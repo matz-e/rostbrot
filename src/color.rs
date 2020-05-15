@@ -1,10 +1,7 @@
-extern crate image;
-extern crate rayon;
-
 #[path = "cache.rs"]
 mod cache;
 
-use self::rayon::prelude::*;
+use rayon::prelude::*;
 use std::cmp;
 use std::error::Error;
 use std::f32;
@@ -19,12 +16,14 @@ pub fn colorize(
     let mut imgbuf: image::RgbImage =
         image::ImageBuffer::new(config.dimensions.x as u32, config.dimensions.y as u32);
 
+    info!("creating color LUT(s)");
     let threshold = 5.0f32;
     let luts: Vec<Vec<u8>> = cache
         .layers
         .iter()
         .map(|l| {
             let m = l.data.iter().max().unwrap();
+            debug!("layer maximum: {}", m);
             (0..=*m)
                 .into_par_iter()
                 .map(|i| {
@@ -43,6 +42,7 @@ pub fn colorize(
         })
         .collect();
 
+    info!("writing image");
     imgbuf
         .enumerate_pixels_mut()
         .par_bridge()

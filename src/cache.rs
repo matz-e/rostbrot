@@ -1,26 +1,19 @@
-extern crate bincode;
-extern crate num_complex;
-extern crate pbr;
-extern crate rayon;
-
-#[cfg(test)]
-extern crate tempfile;
-
 #[path = "histogram.rs"]
 mod histogram;
 #[path = "mandelbrot.rs"]
 mod mandelbrot;
 
-use self::histogram::Histogram;
-use self::mandelbrot::{cardioid, first_bulb, mandelbrot};
-use self::num_complex::Complex;
-use self::pbr::ProgressBar;
-use self::rayon::prelude::*;
+use num_complex::Complex;
+use pbr::ProgressBar;
+use rayon::prelude::*;
 use std::error::Error;
 use std::fs::File;
 use std::io::BufReader;
 use std::io::BufWriter;
 use std::sync::{Arc, Mutex};
+
+use self::histogram::Histogram;
+use self::mandelbrot::{cardioid, first_bulb, mandelbrot};
 
 #[derive(Debug, Deserialize)]
 pub struct Layer {
@@ -39,8 +32,7 @@ pub struct LayerData {
 
 impl PartialEq<Layer> for LayerData {
     fn eq(&self, other: &Layer) -> bool {
-        self.iterations == other.iterations &&
-            self.threshold == other.threshold
+        self.iterations == other.iterations && self.threshold == other.threshold
     }
 }
 
@@ -135,8 +127,10 @@ impl Cache {
         match bincode::deserialize_from(buf_reader) {
             Ok(c) => {
                 if c == *config {
+                    info!("re-using cache in {}", filename);
                     c
                 } else {
+                    info!("overwriting cache in {}", filename);
                     Cache::new(config)
                 }
             }
@@ -156,7 +150,11 @@ impl Cache {
             None => 0,
         };
 
-        let ranges: Vec<_> = self.layers.iter().map(|l| (l.iterations, l.threshold)).collect();
+        let ranges: Vec<_> = self
+            .layers
+            .iter()
+            .map(|l| (l.iterations, l.threshold))
+            .collect();
 
         let area = self.area;
         let dimensions = self.dimensions;
