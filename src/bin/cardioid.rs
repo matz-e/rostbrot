@@ -56,10 +56,10 @@ fn main() -> Result<(), Box<dyn Error>> {
         .enumerate_pixels_mut()
         .par_bridge()
         .for_each(|(x, y, pixel)| {
-            let re = (x as f32 + 0.5) / config.dimensions.x as f32
+            let re = (x as f64 + 0.5) / config.dimensions.x as f64
                 * (config.area.x[1] - config.area.x[0])
                 + config.area.x[0];
-            let im = (y as f32 + 0.5) / config.dimensions.y as f32
+            let im = (y as f64 + 0.5) / config.dimensions.y as f64
                 * (config.area.y[1] - config.area.y[0])
                 + config.area.y[0];
             let c = Complex { re, im };
