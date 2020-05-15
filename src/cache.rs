@@ -223,15 +223,24 @@ mod tests {
     fn layer_equality() {
         let ld = LayerData {
             iterations: 10,
+            threshold: 0,
             data: vec![],
         };
         let l = Layer {
             iterations: 10,
+            threshold: 0,
             color: [0, 0, 0],
         };
         assert_eq!(ld, l);
         let l2 = Layer {
             iterations: 1,
+            threshold: 0,
+            color: [0, 0, 0],
+        };
+        assert_ne!(ld, l2);
+        let l2 = Layer {
+            iterations: 10,
+            threshold: 1,
             color: [0, 0, 0],
         };
         assert_ne!(ld, l2);
@@ -258,6 +267,9 @@ mod tests {
                 area:
                   x: [-2, 2]
                   y: [-1, 1]
+
+                colorization:
+                  exponent: 1.0
 
                 layers:
                   - iterations: 10
