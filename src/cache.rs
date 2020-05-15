@@ -213,9 +213,9 @@ impl Cache {
 
 #[cfg(test)]
 mod tests {
-    use self::tempfile::{tempdir, TempDir};
     use super::*;
     use std::io::Write;
+    use tempfile::{tempdir, TempDir};
 
     #[test]
     fn layer_equality() {
