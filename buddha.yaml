@@ -3,16 +3,19 @@ area:
   y: [-1.4, 1.4]
 
 colorization:
-  exponent: 1.0
+  exponent: 0.25
 
 dimensions:
-  x: 8000
-  y: 8000
+  x: 16000
+  y: 16000
 
 layers:
-  - iterations: 500000
+  - iterations: 5000000
     color: [255, 50, 50]
-  - iterations: 50000
-    color: [0, 255, 0]
-  - iterations: 20000
-    color: [0, 0, 255]
+    threshold: 50000
+  - iterations: 500000
+    color: [50, 255, 50]
+    threshold: 5000
+  - iterations: 200000
+    color: [50, 50, 255]
+    threshold: 2000
